@@ -1,11 +1,11 @@
----
+## ---
 slug: tq-devlog-1
 title: PaaS devlog |#1
 authors: [denis]
 tags: [paas]
 ---
 
-## Devlog #1: github apps, docker builder, cdk8s
+Devlog #1: github apps, docker builder, cdk8s
 
 Today I want to share with you my next steps of creating PaaS from scratch.
 On this page I will cover how I implement a basic deployment flow.
@@ -25,11 +25,13 @@ To make the github webhook secure they provide sha in the headers so I implement
 ### App definition
 
 Usually users configure an app using a yaml or click buttons.
-We don't consider terraform for now, it's also viable, but we want a quick solution. 
+We don't consider terraform for now, it's also viable, but we want a quick solution.
 
-I do plan implement a yaml, but now I want to focus on definition as code. I believe it's gonna give me more flexibility and give the users faster access to the app resources such as a database credentials.
+I do plan implement a `yaml`, but now I want to focus on definition as code. I believe it's gonna give me more flexibility and give the users faster access to the app resources such as a database credentials.
 
 So I expected a `tq` module in a go app like this:
+
+
 ```go
 package tq
 
@@ -60,6 +62,7 @@ So I did a builder package to generate a temporary folder, places this config in
 
 I found an official repo for [buildx](https://github.com/docker/buildx), it's in Go so I can embed it.
 But it looks quite a big challenge to solve, it's even scary to imagine the investigation to start using buildx, I would need to:
+
 - run buildx command locally with a buildx debugger
 - catch the exact function that builds an image
 - understand all the dependencies and the way to build it
@@ -70,6 +73,8 @@ I definitely want to get back to buildx, but no clue when.
 
 After tagging the image I need to push it, so I added registry to my docker compose.
 It couldn't be simpler:
+
+
 ```yaml
 registry:
 	image: registry:2.8.3
@@ -82,7 +87,7 @@ registry:
 Now I can deploy the image. This part is tricky. I couldn't really understand what Im gonna do here.
 
 So I found [cdk8s](https://cdk8s.io/).
-Initially I defined a testing definition. 
+Initially I defined a testing definition.
 Seems work, even can return me a yaml output.
 Unfortunately, it brings node runtime under the hood, but it pays off now.
 
@@ -91,7 +96,7 @@ I do a quite simple deployment, a service and an ingress, and return the generat
 
 Now I have to apply this yaml to the cluster.
 
-__Cluster?__
+**Cluster?**
 
 Ok, I have to install a cluster.
 
@@ -111,8 +116,8 @@ In the progress I needed to add some kubelet [arguments](https://github.com/tree
 I wish I could use CLI and call `kubectl apply`, but it's not gonna workout.
 The goal to support a huge amount of clusters, so I accept kubeconfig dynamically as an argument.
 
-The examples to make it I found only using regular rest api that kube provides. 
-But I don't need it, but definitions I have are in yaml. 
+The examples to make it I found only using regular rest api that kube provides.
+But I don't need it, but definitions I have are in yaml.
 
 So I found some dynamic client to create resources unsafely.
 Since I expected to not now what resources I create/update it what I need.
@@ -127,6 +132,8 @@ Later on I want to understand better what I need to create or update, but I woul
 On the testing step I discover my cluster can't pull an image since registry is not a TLS server.
 It's solved proving a registry config to my cluster.
 So I add another [volume](https://github.com/treenq/treenq/blob/6919be57726109ff3f37ce484db3d2457b4cb01e/docker-compose.yaml#L49) to my cluster to add the registries config
+
+
 ```yaml
 mirrors:
   "registry:5000":
